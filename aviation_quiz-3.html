@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aviation Mechanics Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<style>
+  :root{
+    --bg:#0a0c0f;--panel:#111417;--border:#1e2328;
+    --accent:#f0a500;--accent2:#e05c2a;--text:#dce3ea;--muted:#5a6370;
+    --correct:#2a7a4a;--cl:#3aaa66;--wrong:#7a2a2a;--wl:#cc4444;--r:4px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+
+  /* ── SETUP SCREEN ── */
+  .setup-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .setup-box{background:var(--panel);border:1px solid var(--border);border-top:3px solid var(--accent2);border-radius:var(--r);padding:40px;width:100%;max-width:560px}
+  .setup-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;color:var(--accent2);margin-bottom:4px}
+  .setup-sub{font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:28px}
+  .setup-step{display:flex;gap:14px;margin-bottom:22px;align-items:flex-start}
+  .step-num{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--accent);line-height:1;min-width:22px;margin-top:1px}
+  .step-body{flex:1}
+  .step-text{font-size:.88rem;color:var(--text);line-height:1.6;margin-bottom:8px}
+  .step-text a{color:var(--accent);text-decoration:none}
+  .step-text a:hover{text-decoration:underline}
+  .step-text b{color:var(--accent)}
+  .step-text code{font-family:'IBM Plex Mono',monospace;font-size:.78rem;background:var(--bg);border:1px solid var(--border);padding:2px 7px;border-radius:3px;color:var(--accent2);white-space:nowrap}
+  .setup-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:.84rem;padding:11px 13px;outline:none;transition:border-color .15s;margin-top:4px}
+  .setup-input:focus{border-color:var(--accent)}
+  .setup-input::placeholder{color:var(--muted)}
+  .setup-divider{border:none;border-top:1px solid var(--border);margin:24px 0}
+  .setup-btn{width:100%;background:var(--accent);color:#000;border:none;border-radius:var(--r);font-family:'IBM Plex Mono',monospace;font-size:.8rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:14px;cursor:pointer;transition:opacity .2s;margin-top:12px}
+  .setup-btn:hover{opacity:.88}
+  .setup-btn:disabled{opacity:.4;cursor:default}
+  .setup-error{color:var(--wl);font-size:.8rem;margin-top:12px;text-align:center;display:none;line-height:1.5}
+  .setup-testing{color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:.72rem;text-align:center;margin-top:12px;letter-spacing:1px;display:none}
+  .setup-reset{font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:var(--muted);text-align:center;margin-top:14px;cursor:pointer;letter-spacing:1px;text-transform:uppercase}
+  .setup-reset:hover{color:var(--wl)}
+
+  /* ── LOGIN ── */
+  .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .login-box{background:var(--panel);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:var(--r);padding:40px;width:100%;max-width:440px}
+  .login-title{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:3px;color:var(--accent);margin-bottom:4px}
+  .login-sub{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:32px}
+  .login-label{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px}
+  .login-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:1rem;padding:12px 14px;margin-bottom:20px;outline:none;transition:border-color .15s}
+  .login-input:focus{border-color:var(--accent)}
+  .login-roles{display:flex;gap:10px;margin-bottom:28px}
+  .role-btn{flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .15s}
+  .role-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(240,165,0,.08)}
+  .pass-wrap{overflow:hidden;max-height:0;opacity:0;transition:max-height .3s ease,opacity .3s ease}
+  .pass-wrap.visible{max-height:110px;opacity:1}
+  .login-btn{width:100%;background:var(--accent);color:#000;border:none;border-radius:var(--r);font-family:'IBM Plex Mono',monospace;font-size:.8rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:14px;cursor:pointer;transition:opacity .2s}
+  .login-btn:hover{opacity:.88}
+  .login-error{color:var(--wl);font-size:.82rem;margin-top:12px;text-align:center;display:none}
+  .login-reconfigure{font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:var(--muted);text-align:center;margin-top:16px;cursor:pointer;letter-spacing:1px;text-transform:uppercase}
+  .login-reconfigure:hover{color:var(--accent)}
+
+  /* ── APP HEADER ── */
+  .app-header{background:var(--panel);border-bottom:2px solid var(--accent);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .app-header-left{display:flex;align-items:baseline;gap:14px}
+  .app-title{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;color:var(--accent)}
+  .app-subtitle{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+  .user-pill{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:6px 14px;display:flex;align-items:center;gap:8px}
+  .user-pill span{color:var(--accent)}
+  .logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0 0 0 8px;border-left:1px solid var(--border);margin-left:8px}
+  .logout-btn:hover{color:var(--wl)}
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar-wrap{background:var(--border);height:3px}
+  .progress-bar{height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s ease}
+
+  /* ── STATS ROW ── */
+  .stats-row{display:flex;gap:32px;padding:14px 32px;background:var(--panel);border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;flex-wrap:wrap}
+  .stat{display:flex;flex-direction:column;gap:2px}
+  .stat-label{color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-size:.63rem}
+  .stat-value{color:var(--text);font-size:1rem;font-weight:500}
+  .stat-value.ac{color:var(--accent)}
+
+  /* ── SECTION TABS ── */
+  .section-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:20px 32px 0}
+  .section-tab{font-family:'IBM Plex Mono',monospace;font-size:.63rem;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);cursor:pointer;transition:all .15s}
+  .section-tab.active{border-color:var(--accent);color:var(--accent);background:rgba(240,165,0,.08)}
+  .section-tab.done{border-color:var(--correct);color:var(--cl)}
+
+  /* ── QUIZ ── */
+  .main{max-width:860px;margin:0 auto;padding:32px 24px}
+  .section-badge{display:inline-flex;align-items:center;background:var(--border);border-left:3px solid var(--accent);padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:18px}
+  .question-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:28px;margin-bottom:20px;animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .q-number{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:2px;margin-bottom:10px}
+  .q-text{font-size:1.05rem;font-weight:300;line-height:1.6;color:var(--text);margin-bottom:24px}
+  .options{display:flex;flex-direction:column;gap:10px}
+  .option-btn{display:flex;align-items:flex-start;gap:14px;background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:13px 16px;cursor:pointer;text-align:left;font-family:'IBM Plex Sans',sans-serif;font-size:.9rem;color:var(--text);transition:border-color .15s,background .15s;line-height:1.5;width:100%}
+  .option-btn:hover:not(:disabled){border-color:var(--accent);background:rgba(240,165,0,.06)}
+  .option-btn:disabled{cursor:default}
+  .option-letter{font-family:'IBM Plex Mono',monospace;font-size:.72rem;font-weight:500;color:var(--muted);min-width:16px;padding-top:1px;flex-shrink:0}
+  .option-btn.correct{border-color:var(--cl);background:rgba(58,170,102,.12)}
+  .option-btn.correct .option-letter{color:var(--cl)}
+  .option-btn.wrong{border-color:var(--wl);background:rgba(204,68,68,.12)}
+  .option-btn.wrong .option-letter{color:var(--wl)}
+  .feedback{margin-top:18px;padding:13px 16px;border-radius:var(--r);font-size:.86rem;line-height:1.5;display:none}
+  .feedback.show{display:block;animation:fadeIn .2s ease}
+  .feedback.correct{background:rgba(58,170,102,.1);border-left:3px solid var(--cl);color:#a0d8b8}
+  .feedback.wrong{background:rgba(204,68,68,.1);border-left:3px solid var(--wl);color:#d8a0a0}
+  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:28px}
+  .btn{font-family:'IBM Plex Mono',monospace;font-size:.76rem;letter-spacing:1.5px;text-transform:uppercase;padding:11px 22px;border:none;border-radius:var(--r);cursor:pointer;transition:opacity .2s,transform .1s}
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:var(--accent);color:#000;font-weight:600}
+  .btn-primary:hover{opacity:.88}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+  .btn-ghost:hover{border-color:var(--muted);color:var(--text)}
+  .btn:disabled{opacity:.3;cursor:default}
+
+  /* ── RESULTS ── */
+  .results{display:none;text-align:center;padding:50px 24px;max-width:600px;margin:0 auto}
+  .results.show{display:block;animation:fadeIn .4s ease}
+  .results-title{font-family:'Bebas Neue',sans-serif;font-size:3.5rem;letter-spacing:4px;color:var(--accent);margin-bottom:6px}
+  .score-big{font-family:'Bebas Neue',sans-serif;font-size:5rem;color:var(--text);line-height:1;margin-bottom:4px}
+  .score-label{font-size:.75rem;color:var(--muted);letter-spacing:2px;font-family:'IBM Plex Mono',monospace;margin-bottom:32px}
+  .breakdown-title{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;text-align:left}
+  .breakdown-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .breakdown-name{flex:1;font-size:.83rem;color:var(--text);text-align:left}
+  .breakdown-bar{height:3px;background:var(--border);flex:2;border-radius:2px;overflow:hidden}
+  .breakdown-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .breakdown-score{font-family:'IBM Plex Mono',monospace;font-size:.83rem}
+
+  /* ── INSTRUCTOR DASHBOARD ── */
+  .inst-wrap{max-width:1100px;margin:0 auto;padding:32px 24px}
+  .summary-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+  .sum-stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:20px;text-align:center}
+  .sum-stat-val{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;color:var(--accent);line-height:1}
+  .sum-stat-lbl{font-family:'IBM Plex Mono',monospace;font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:4px}
+  .dash-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:20px}
+  .dash-card-title{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+  .live-dot{width:7px;height:7px;background:var(--cl);border-radius:50%;animation:pulse 1.4s infinite;display:inline-block;margin-right:6px}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+  .refresh-btn{font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:1px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);padding:4px 10px;cursor:pointer;transition:all .15s}
+  .refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .last-upd{font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:var(--muted)}
+  .student-list{display:flex;flex-direction:column;gap:10px}
+  .student-row{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;transition:border-color .2s}
+  .student-row:hover{border-color:var(--muted)}
+  .student-avatar{width:36px;height:36px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--accent);flex-shrink:0}
+  .student-info{flex:1.2;min-width:0}
+  .student-name{font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+  .student-meta{font-family:'IBM Plex Mono',monospace;font-size:.63rem;color:var(--muted);margin-top:3px}
+  .student-progress-wrap{flex:2}
+  .student-prog-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:5px}
+  .student-prog-fill{height:100%;border-radius:3px;transition:width .6s ease}
+  .student-prog-label{font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--muted);display:flex;justify-content:space-between}
+  .student-score-badge{font-family:'IBM Plex Mono',monospace;font-size:.72rem;font-weight:500;padding:5px 11px;border-radius:3px;white-space:nowrap;flex-shrink:0;min-width:120px;text-align:center}
+  .badge-done{background:rgba(58,170,102,.15);color:var(--cl);border:1px solid var(--correct)}
+  .badge-inprog{background:rgba(240,165,0,.12);color:var(--accent);border:1px solid rgba(240,165,0,.3)}
+  .badge-wait{background:var(--border);color:var(--muted);border:1px solid var(--border)}
+  .sdot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .sdot-done{background:var(--cl)}
+  .sdot-prog{background:var(--accent);animation:pulse 1.4s infinite}
+  .sdot-wait{background:var(--muted)}
+  .feed{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
+  .feed::-webkit-scrollbar{width:4px}
+  .feed::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .feed-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);animation:fadeIn .3s ease}
+  .feed-time{font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap;min-width:64px}
+  .feed-msg{font-size:.82rem;color:var(--text);flex:1}
+  .feed-msg strong{color:var(--accent)}
+  .feed-badge{font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap}
+  .fb-join{background:rgba(58,170,102,.15);color:var(--cl)}
+  .fb-fin{background:rgba(224,92,42,.18);color:var(--accent2)}
+  .empty-state{text-align:center;padding:28px 16px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:.73rem;letter-spacing:1px}
+  .conn-badge{font-family:'IBM Plex Mono',monospace;font-size:.6rem;padding:3px 8px;border-radius:3px;letter-spacing:1px}
+  .conn-ok{background:rgba(58,170,102,.15);color:var(--cl)}
+  .conn-err{background:rgba(204,68,68,.15);color:var(--wl)}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ═══ SETUP SCREEN ═══ -->
+<div id="setupScreen" class="setup-screen">
+  <div class="setup-box">
+    <div class="setup-title">Firebase Setup</div>
+    <div class="setup-sub">One-time configuration — takes about 5 minutes</div>
+
+    <div class="setup-step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-text">Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> and sign in with your Google account. Click <b>Add project</b>, name it anything (e.g. <code>amt-quiz</code>), then click through and hit <b>Create project</b>.</div>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-text">In your project, click <b>Build</b> in the left sidebar → <b>Realtime Database</b> → <b>Create Database</b>. Choose any location, then select <b>Start in test mode</b> and click <b>Enable</b>.</div>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-text">Click the <b>gear icon ⚙</b> → <b>Project settings</b>. Scroll down to <b>Your apps</b> and click the <b>&lt;/&gt; Web</b> icon. Give the app a nickname, click <b>Register app</b>, then copy the <b>databaseURL</b> value — it looks like <code>https://amt-quiz-default-rtdb.firebaseio.com</code> — and paste it below.</div>
+        <input class="setup-input" id="setupDbUrl" type="text" placeholder="https://your-project-default-rtdb.firebaseio.com" />
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-text">On that same page, copy the <b>apiKey</b> value (starts with <code>AIza...</code>) and paste it below.</div>
+        <input class="setup-input" id="setupApiKey" type="text" placeholder="AIzaSy..." />
+      </div>
+    </div>
+
+    <hr class="setup-divider">
+
+    <div class="setup-step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-text">Choose an <b>Instructor Password</b> that only you will know. Students will never see this.</div>
+        <input class="setup-input" id="setupPassword" type="password" placeholder="Choose a secure password" />
+      </div>
+    </div>
+
+    <button class="setup-btn" id="setupBtn" onclick="doSetup()">Test Connection &amp; Save</button>
+    <div class="setup-error" id="setupError"></div>
+    <div class="setup-testing" id="setupTesting">⟳ Connecting to Firebase...</div>
+  </div>
+</div>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="loginScreen" class="login-screen hidden">
+  <div class="login-box">
+    <div class="login-title">AMT Quiz</div>
+    <div class="login-sub">Aviation Mechanic Certification</div>
+    <label class="login-label">Your Name</label>
+    <input class="login-input" id="loginName" type="text" placeholder="Enter your full name" />
+    <label class="login-label">Sign in as</label>
+    <div class="login-roles">
+      <button class="role-btn active" id="roleStudent" onclick="setRole('student')">Student</button>
+      <button class="role-btn" id="roleInstructor" onclick="setRole('instructor')">Instructor</button>
+    </div>
+    <div class="pass-wrap" id="passWrap">
+      <label class="login-label">Instructor Password</label>
+      <input class="login-input" id="instPassword" type="password" placeholder="Enter instructor password" />
+    </div>
+    <button class="login-btn" onclick="doLogin()">Enter</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-reconfigure" onclick="resetConfig()">↺ Reconfigure Firebase</div>
+  </div>
+</div>
+
+<!-- ═══ QUIZ VIEW ═══ -->
+<div id="quizView" class="hidden">
+  <div class="app-header">
+    <div class="app-header-left">
+      <div class="app-title">AMT Quiz</div>
+      <div class="app-subtitle">Aviation Mechanic Certification</div>
+    </div>
+    <div class="user-pill">Signed in as <span id="headerName">—</span><button class="logout-btn" onclick="doLogout()">✕</button></div>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+  <div class="stats-row">
+    <div class="stat"><span class="stat-label">Question</span><span class="stat-value ac" id="statQ">1 / 33</span></div>
+    <div class="stat"><span class="stat-label">Correct</span><span class="stat-value" id="statCorrect">0</span></div>
+    <div class="stat"><span class="stat-label">Score</span><span class="stat-value" id="statScore">—</span></div>
+    <div class="stat"><span class="stat-label">Section</span><span class="stat-value" id="statSection">—</span></div>
+  </div>
+  <div class="section-tabs" id="sectionTabs"></div>
+  <div class="main" id="quizArea">
+    <div class="section-badge" id="sectionBadge">Loading...</div>
+    <div class="question-card">
+      <div class="q-number" id="qNumber"></div>
+      <div class="q-text" id="qText"></div>
+      <div class="options" id="options"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="prevBtn" onclick="navigate(-1)">← Prev</button>
+      <button class="btn btn-primary" id="nextBtn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+  <div class="results" id="resultsScreen">
+    <div class="results-title">Quiz Complete</div>
+    <div class="score-big" id="finalScore">—</div>
+    <div class="score-label">TOTAL SCORE</div>
+    <div style="margin-bottom:32px"><div class="breakdown-title">Section Breakdown</div><div id="breakdownList"></div></div>
+    <button class="btn btn-primary" onclick="restartQuiz()">Retake Quiz</button>
+  </div>
+</div>
+
+<!-- ═══ INSTRUCTOR DASHBOARD ═══ -->
+<div id="instView" class="hidden">
+  <div class="app-header">
+    <div class="app-header-left">
+      <div class="app-title">Instructor Dashboard</div>
+      <div class="app-subtitle">Live Student Progress</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="conn-badge conn-ok" id="connBadge">● Live</span>
+      <div class="user-pill"><span id="instHeaderName">—</span><button class="logout-btn" onclick="doLogout()">✕</button></div>
+    </div>
+  </div>
+  <div class="inst-wrap">
+    <div class="summary-stats">
+      <div class="sum-stat"><div class="sum-stat-val" id="tTotal">0</div><div class="sum-stat-lbl">Registered</div></div>
+      <div class="sum-stat"><div class="sum-stat-val" id="tInProg">0</div><div class="sum-stat-lbl">In Progress</div></div>
+      <div class="sum-stat"><div class="sum-stat-val" id="tDone">0</div><div class="sum-stat-lbl">Finished</div></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-title">
+        <span><span class="live-dot"></span>Student Progress — updates instantly</span>
+        <span class="last-upd" id="lastUpd"></span>
+      </div>
+      <div class="student-list" id="studentList">
+        <div class="empty-state">No students have joined yet. They will appear here the moment they sign in.</div>
+      </div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-title">Activity Feed</div>
+      <div class="feed" id="actFeed">
+        <div class="empty-state">Activity will appear here as students join and finish.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// QUIZ DATA
+// ═══════════════════════════════════════════════════════════
+const QD=[
+  {s:"Weight & Balance",q:"If an aircraft is loaded so that the aft CG limit is exceeded, what flight characteristic is most likely to result?",o:["The aircraft will be nose-heavy and difficult to rotate on takeoff","The aircraft may be tail-heavy and unable to recover from a stall or spin","The aircraft will exhibit excessive roll instability during cruise"],c:1},
+  {s:"Weight & Balance",q:"How is the moment of an item of equipment determined in weight and balance calculations?",o:["Divide its weight by its arm (distance from datum)","Multiply its weight by its arm (distance from datum)","Add its weight to its arm (distance from datum)"],c:1},
+  {s:"Weight & Balance",q:'What is the definition of "arm" as used in aircraft weight and balance?',o:["The vertical distance from the datum to any point within the aircraft","The horizontal distance from the datum to any point within the aircraft","The diagonal distance from the fulcrum to the center of gravity"],c:1},
+  {s:"Forms & Regulations",q:"When completion of FAA Form 337 is required, how many copies are normally prepared and what is the distribution?",o:["Three copies — one to the owner, one to the FAA, and one kept in the aircraft","Two copies — one to the aircraft owner and one sent to the FAA Aircraft Registration Branch","One copy — retained in the aircraft maintenance records"],c:1},
+  {s:"Forms & Regulations",q:"Under what circumstances is compliance with a manufacturer's service bulletin mandatory?",o:["Any time it is issued by the manufacturer for aircraft in commercial service","When the service bulletin is incorporated into an airworthiness directive or other approved data","Whenever it applies to aircraft operated under 14 CFR Part 91"],c:1},
+  {s:"Forms & Regulations",q:'What is the regulatory definition of "time in service" with regard to maintenance record entries?',o:["Total flight hours logged since the aircraft's last major overhaul","Time from when the aircraft leaves the surface until it touches down at the next landing","Time from engine start to engine shutdown, including ground operations"],c:1},
+  {s:"Physics",q:"What happens to pressure and velocity when air or fluid passes through the converging section of a venturi?",o:["Velocity decreases and pressure decreases","Velocity increases and pressure decreases","Velocity increases and pressure increases"],c:1},
+  {s:"Physics",q:"What are the four principal forces acting on an airplane in flight?",o:["Lift, drag, inertia, and weight","Lift, drag, thrust, and gravity","Lift, thrust, torque, and drag"],c:1},
+  {s:"Physics",q:"What characteristic of the atmosphere primarily determines the speed of sound?",o:["Pressure","Temperature","Humidity"],c:1},
+  {s:"Aircraft Drawings",q:"What does a hidden line indicate on an aircraft drawing?",o:["Alternate configurations or future design changes","Invisible edges or contours of a part","Reference dimensions not to be used for fabrication"],c:1},
+  {s:"Aircraft Drawings",q:"What are the two methods of depicting tolerances on an aircraft drawing?",o:["By using shading and cross-hatching, or by using color-coded zones","By using numbers with plus/minus signs, or by using complete minimum and maximum dimension numbers","By using phantom lines and note blocks, or by referencing an appendix"],c:1},
+  {s:"Aircraft Drawings",q:"What is the purpose of zone numbers on aircraft drawings?",o:["To identify the revision history and approval dates for each area","To provide a means of locating a specific point on the drawing, similar to a map grid","To indicate the inspection priority of different structural zones"],c:1},
+  {s:"Materials, Hardware & Processes",q:"What does the grip length of a bolt correspond to?",o:["The total length of the bolt from head to tip","The thickness of the material being fastened with the bolt","The length of the threaded portion of the bolt"],c:1},
+  {s:"Materials, Hardware & Processes",q:"For what types of applications are self-locking nuts NOT allowed?",o:["When installed in wet or corrosive environments","When either the bolt or the nut is subject to rotation","When used in high-temperature applications near the exhaust"],c:1},
+  {s:"Materials, Hardware & Processes",q:"Which non-destructive testing method can be performed without removing surface coatings and is effective for detecting subsurface corrosion?",o:["Dye penetrant inspection","Eddy current inspection","Magnetic particle inspection"],c:1},
+  {s:"Cleaning & Corrosion Control",q:"What form of corrosion is an attack along grain boundaries of an alloy, usually caused by improper heat treatment?",o:["Fretting corrosion","Intergranular corrosion","Galvanic corrosion"],c:1},
+  {s:"Cleaning & Corrosion Control",q:"What are the visible signs of filiform corrosion?",o:["Dark, smoky residue streaming back from rivet heads","Blistered paint surfaces or worm-like thread tracks under the paint","White powdery deposits and pitting on bare metal surfaces"],c:1},
+  {s:"Cleaning & Corrosion Control",q:"Why should aluminum metal polish NOT be used on anodized aluminum?",o:["It causes galvanic corrosion when applied to anodized surfaces","It removes the anodized coating","It leaves a residue that interferes with paint adhesion"],c:1},
+  {s:"Fluid Lines & Fittings",q:"What is the flare angle for aviation fluid line flares?",o:["45 degrees","37 degrees","30 degrees"],c:1},
+  {s:"Fluid Lines & Fittings",q:"How can you determine if a flexible hose has been correctly or incorrectly installed?",o:["Check that all clamps are within 12 inches of each end of the hose","The lay line will be straight if properly installed; a twisted lay line indicates incorrect installation","Verify the end fittings are torqued to the manufacturer's specification"],c:1},
+  {s:"Fluid Lines & Fittings",q:"What percentage of flattening is allowed when bending metal tubing?",o:["Do not exceed 20% of original diameter","Do not exceed 75% of original diameter","Do not exceed 50% of original diameter"],c:1},
+  {s:"Fundamentals of Electricity",q:"Why can't the charge of a nickel-cadmium battery be determined by measuring the specific gravity of its electrolyte?",o:["The electrolyte evaporates too quickly to obtain an accurate reading","Its specific gravity does not significantly change during charge or discharge cycles","The potassium hydroxide electrolyte reacts with the hydrometer"],c:1},
+  {s:"Fundamentals of Electricity",q:"What are the three causes of opposition to current flow in an AC circuit?",o:["Resistance, capacitance, and reluctance","Resistance, inductive reactance, and capacitive reactance","Impedance, resistance, and magnetic flux"],c:1},
+  {s:"Fundamentals of Electricity",q:"What is the principal advantage of AC current over DC current?",o:["AC current can be stored more efficiently in batteries","Power can be transmitted more efficiently over long distances using transformers","AC circuits have lower impedance than equivalent DC circuits"],c:1},
+  {s:"Ground Operations & Servicing",q:"What is the cause of hydraulic lock in large radial engines?",o:["Fuel flooding the intake manifold and entering cylinders during priming","Oil seeping past piston rings into the combustion chambers of lower cylinders","Coolant leaking from the cylinder heads and pooling in the combustion chambers"],c:1},
+  {s:"Ground Operations & Servicing",q:"What does the number 100 signify in '100 Low Lead' aviation gasoline?",o:["The maximum operating temperature in degrees Celsius","The lean mixture performance number (octane rating)","The minimum flash point temperature of the fuel in Fahrenheit"],c:1},
+  {s:"Ground Operations & Servicing",q:"What is meant by a 'hot start' when starting a turbine engine?",o:["Starting the engine when ambient temperatures exceed 90°F","Ignition with an excessively rich mixture causing a rapid temperature rise that may exceed EGT limits","A start attempt that results in the engine hung at idle RPM without accelerating"],c:1},
+  {s:"Human Factors",q:"What is the ultimate goal of human factors training in aviation maintenance?",o:["To establish written procedures that eliminate the need for mechanic judgment","To reduce the introduction of human error, thereby improving safety","To increase productivity by optimizing workflow in maintenance facilities"],c:1},
+  {s:"Human Factors",q:"Omission, commission, and extraneous are three types of what?",o:["Maintenance documentation requirements","Human error","Regulatory violations"],c:1},
+  {s:"Human Factors",q:"What do you call a series of human errors that are allowed to build until an accident occurs?",o:["A systemic failure","A chain of events","A cascading discrepancy"],c:1},
+  {s:"Inspection Concepts",q:"An aircraft is flown four hours over the 100-hour inspection limit to reach a maintenance facility. How are those extra hours handled?",o:["They are forgiven and the next 100-hour period begins from zero at the maintenance facility","They are included in the next 100-hour time-in-service period","A special flight permit must be filed retroactively to cover the excess hours"],c:1},
+  {s:"Inspection Concepts",q:"What types of operations require that aircraft operating under 14 CFR Part 91 undergo 100-hour inspections?",o:["All aircraft used in commercial operations, including charter and fractional ownership","Aircraft operated for compensation or hire, or used for flight instruction when the aircraft is provided by the instructor","Aircraft with more than 1,000 total flight hours that operate in controlled airspace"],c:1},
+  {s:"Inspection Concepts",q:"When can an aircraft with an expired annual inspection be flown to a maintenance base for the inspection?",o:["When the owner notifies the FAA in writing prior to the flight","When a special flight permit has been issued by the FAA","When the flight is conducted under VFR in uncontrolled airspace only"],c:1},
+  {s:"Mathematics",q:"What is the key step required in order to add or subtract unlike fractions?",o:["Convert both fractions to mixed numbers before performing the operation","Find the lowest common denominator","Round each fraction to the nearest tenth before adding"],c:1},
+  {s:"Mathematics",q:"How do you divide one fraction by another?",o:["Multiply both numerators and divide the result by the sum of the denominators","Invert the divisor and multiply the numerators together and the denominators together","Find the lowest common denominator, then divide the numerators"],c:1},
+  {s:"Mathematics",q:"What is a proportion?",o:["A comparison of two quantities expressed as a single decimal value","A statement of equality between two or more ratios","The result obtained when a ratio is converted to a percentage"],c:1},
+];
+const TQ=QD.length;
+const SECTIONS=[...new Set(QD.map(q=>q.s))];
+
+// ═══════════════════════════════════════════════════════════
+// CONFIG — saved in localStorage so setup only runs once
+// ═══════════════════════════════════════════════════════════
+const CFG_KEY='amt_firebase_cfg_v1';
+let CFG=null;
+let db=null; // Firebase database reference
+
+function loadConfig(){
+  try{ CFG=JSON.parse(localStorage.getItem(CFG_KEY)); }catch(e){ CFG=null; }
+}
+function saveConfig(c){ CFG=c; localStorage.setItem(CFG_KEY,JSON.stringify(c)); }
+function resetConfig(){
+  localStorage.removeItem(CFG_KEY); CFG=null;
+  hide('loginScreen'); show('setupScreen');
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIREBASE INIT
+// ═══════════════════════════════════════════════════════════
+function initFirebase(cfg){
+  try{
+    // If already initialized, reuse
+    if(firebase.apps.length){
+      db=firebase.database();
+      return true;
+    }
+    firebase.initializeApp({
+      apiKey: cfg.apiKey,
+      databaseURL: cfg.databaseURL,
+      projectId: cfg.databaseURL.replace('https://','').replace('.firebaseio.com','').split('-default')[0],
+    });
+    db=firebase.database();
+    return true;
+  }catch(e){ console.error('Firebase init failed',e); return false; }
+}
+
+// Safe Firebase helpers
+function dbRef(path){ return db.ref(path); }
+
+async function dbGet(path){
+  const snap=await dbRef(path).get();
+  return snap.exists() ? snap.val() : null;
+}
+
+async function dbSet(path,val){
+  await dbRef(path).set(val);
+}
+
+async function dbUpdate(path,val){
+  await dbRef(path).update(val);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════════════════════════
+async function doSetup(){
+  const dbUrl   = document.getElementById('setupDbUrl').value.trim().replace(/\/$/, '');
+  const apiKey  = document.getElementById('setupApiKey').value.trim();
+  const instPw  = document.getElementById('setupPassword').value;
+  const errEl   = document.getElementById('setupError');
+  const testEl  = document.getElementById('setupTesting');
+  const btn     = document.getElementById('setupBtn');
+
+  errEl.style.display='none';
+
+  if(!dbUrl||!apiKey||!instPw){
+    errEl.textContent='Please fill in all fields before continuing.';
+    errEl.style.display='block'; return;
+  }
+  if(!dbUrl.includes('firebaseio.com')){
+    errEl.textContent='Database URL should end in .firebaseio.com — check Step 3.';
+    errEl.style.display='block'; return;
+  }
+
+  btn.disabled=true; testEl.style.display='block';
+
+  const cfg={apiKey, databaseURL:dbUrl, instPassword:instPw};
+
+  try{
+    initFirebase(cfg);
+    // Write a test value to verify connection
+    await dbSet('_setup_test', {ok:true, ts:Date.now()});
+    // Initialize data structure if empty
+    const roster=await dbGet('roster');
+    if(!roster) await dbSet('roster',{});
+    const feed=await dbGet('feed');
+    if(!feed) await dbSet('feed',{});
+
+    saveConfig(cfg);
+    testEl.style.display='none';
+    btn.disabled=false;
+    hide('setupScreen'); show('loginScreen');
+  }catch(e){
+    testEl.style.display='none';
+    btn.disabled=false;
+    errEl.innerHTML=`Connection failed. Double-check your Database URL and API Key.<br><small style="color:var(--muted)">${e.message}</small>`;
+    errEl.style.display='block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════
+let currentUser=null, currentRole='student', cur=0;
+let ans=new Array(TQ).fill(null);
+let instListener=null; // Firebase real-time listener
+
+// ═══════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════
+function setRole(r){
+  currentRole=r;
+  document.getElementById('roleStudent').classList.toggle('active',r==='student');
+  document.getElementById('roleInstructor').classList.toggle('active',r==='instructor');
+  const pw=document.getElementById('passWrap');
+  if(r==='instructor'){ pw.classList.add('visible'); document.getElementById('instPassword').focus(); }
+  else{ pw.classList.remove('visible'); document.getElementById('instPassword').value=''; }
+  document.getElementById('loginError').style.display='none';
+}
+
+async function doLogin(){
+  const name=document.getElementById('loginName').value.trim();
+  const errEl=document.getElementById('loginError');
+  if(!name){ errEl.style.display='block'; errEl.textContent='Please enter your name to continue.'; return; }
+  if(currentRole==='instructor'){
+    const pw=document.getElementById('instPassword').value;
+    if(pw!==CFG.instPassword){
+      errEl.style.display='block'; errEl.textContent='Incorrect instructor password. Please try again.';
+      document.getElementById('instPassword').value=''; document.getElementById('instPassword').focus(); return;
+    }
+  }
+  errEl.style.display='none';
+  currentUser=name;
+  if(currentRole==='instructor'){ showInstructor(); }
+  else{ await registerStudent(name); showQuiz(); }
+}
+
+function doLogout(){
+  // Remove Firebase listener if active
+  if(instListener){ dbRef('roster').off('value',instListener); dbRef('feed').off('value'); instListener=null; }
+  currentUser=null; ans=new Array(TQ).fill(null); cur=0;
+  document.getElementById('loginName').value='';
+  document.getElementById('instPassword').value='';
+  document.getElementById('passWrap').classList.remove('visible');
+  document.getElementById('resultsScreen').classList.remove('show');
+  document.getElementById('quizArea').style.display='block';
+  document.getElementById('sectionTabs').style.display='flex';
+  show('loginScreen'); hide('quizView'); hide('instView');
+}
+
+// ═══════════════════════════════════════════════════════════
+// STUDENT — Firebase writes
+// ═══════════════════════════════════════════════════════════
+// Firebase keys can't contain . # $ [ ]
+function safeKey(name){ return name.replace(/[.#$\[\]]/g,'_'); }
+
+async function registerStudent(name){
+  const key=safeKey(name);
+  const existing=await dbGet(`roster/${key}`);
+  if(!existing){
+    await dbSet(`roster/${key}`,{
+      name, joinedAt:ts(), answeredCount:0, correctCount:0,
+      finished:false, finishedAt:null, lastActive:ts()
+    });
+    // Push to feed
+    const feedRef=db.ref('feed').push();
+    await feedRef.set({type:'joined',name,time:ts()});
+  }
+}
+
+async function saveProgress(){
+  if(!currentUser) return;
+  const key=safeKey(currentUser);
+  const answered=ans.filter(a=>a!==null).length;
+  const correct=ans.filter((a,i)=>a===QD[i].c).length;
+  const finished=answered===TQ;
+  const existing=await dbGet(`roster/${key}`);
+  const wasFinished=existing?existing.finished:false;
+
+  await dbUpdate(`roster/${key}`,{
+    answeredCount:answered, correctCount:correct,
+    finished, finishedAt:finished?(existing&&existing.finishedAt?existing.finishedAt:ts()):null,
+    lastActive:ts()
+  });
+
+  if(finished&&!wasFinished){
+    const feedRef=db.ref('feed').push();
+    await feedRef.set({type:'finished',name:currentUser,score:`${correct}/${TQ}`,time:ts()});
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// QUIZ
+// ═══════════════════════════════════════════════════════════
+function showQuiz(){
+  hide('loginScreen'); hide('instView'); show('quizView');
+  document.getElementById('headerName').textContent=currentUser;
+  renderQ();
+}
+
+function secScore(sec){
+  const qs=QD.map((q,i)=>({q,i})).filter(({q})=>q.s===sec);
+  return{correct:qs.filter(({i})=>ans[i]===QD[i].c).length,total:qs.length,answered:qs.filter(({i})=>ans[i]!==null).length};
+}
+
+function buildTabs(){
+  const q=QD[cur];
+  document.getElementById('sectionTabs').innerHTML=SECTIONS.map(s=>{
+    const sc=secScore(s);
+    return`<button class="section-tab ${sc.answered===sc.total?'done':''} ${q.s===s?'active':''}" onclick="jumpSec(${JSON.stringify(s)})">${s}</button>`;
+  }).join('');
+}
+
+function jumpSec(name){const idx=QD.findIndex(q=>q.s===name);if(idx!==-1){cur=idx;renderQ();}}
+
+function renderQ(){
+  const q=QD[cur];
+  const answered=ans.filter(a=>a!==null).length;
+  const correct=ans.filter((a,i)=>a===QD[i].c).length;
+  document.getElementById('qNumber').textContent=`QUESTION ${cur+1} OF ${TQ}`;
+  document.getElementById('qText').textContent=q.q;
+  document.getElementById('sectionBadge').textContent=q.s;
+  document.getElementById('statQ').textContent=`${cur+1} / ${TQ}`;
+  document.getElementById('statCorrect').textContent=correct;
+  document.getElementById('statScore').textContent=answered>0?`${correct} / ${answered}`:'—';
+  document.getElementById('statSection').textContent=q.s.split(' ')[0];
+  const L=['A','B','C'];
+  document.getElementById('options').innerHTML=q.o.map((o,i)=>{
+    let cls='';
+    if(ans[cur]!==null){if(i===q.c)cls='correct';else if(i===ans[cur])cls='wrong';}
+    return`<button class="option-btn ${cls}" onclick="pickAns(${i})" ${ans[cur]!==null?'disabled':''}>
+      <span class="option-letter">${L[i]}</span><span>${esc(o)}</span></button>`;
+  }).join('');
+  const fb=document.getElementById('feedback');
+  if(ans[cur]!==null){
+    const ok=ans[cur]===q.c;
+    fb.className=`feedback show ${ok?'correct':'wrong'}`;
+    fb.textContent=ok?'✓ Correct! Well done.':`✗ Incorrect. The correct answer is: ${q.o[q.c]}`;
+  }else{fb.className='feedback';}
+  document.getElementById('prevBtn').disabled=cur===0;
+  document.getElementById('nextBtn').textContent=cur===TQ-1?'Finish':'Next →';
+  document.getElementById('progressBar').style.width=`${((cur+1)/TQ)*100}%`;
+  buildTabs();
+}
+
+async function pickAns(idx){
+  if(ans[cur]!==null)return;
+  ans[cur]=idx; renderQ();
+  await saveProgress();
+}
+
+async function navigate(dir){
+  if(dir===1&&cur===TQ-1){await doFinish();return;}
+  cur=Math.max(0,Math.min(TQ-1,cur+dir)); renderQ();
+}
+
+async function doFinish(){
+  document.getElementById('quizArea').style.display='none';
+  document.getElementById('sectionTabs').style.display='none';
+  const correct=ans.filter((a,i)=>a===QD[i].c).length;
+  document.getElementById('finalScore').textContent=`${correct}/${TQ}`;
+  document.getElementById('breakdownList').innerHTML=SECTIONS.map(s=>{
+    const sc=secScore(s);const pct=Math.round((sc.correct/sc.total)*100);
+    return`<div class="breakdown-item"><span class="breakdown-name">${s}</span>
+      <div class="breakdown-bar"><div class="breakdown-fill" style="width:${pct}%"></div></div>
+      <span class="breakdown-score" style="color:${pct>=67?'var(--cl)':'var(--wl)'}">${sc.correct}/${sc.total}</span></div>`;
+  }).join('');
+  document.getElementById('resultsScreen').classList.add('show');
+  await saveProgress();
+}
+
+async function restartQuiz(){
+  ans=new Array(TQ).fill(null); cur=0;
+  document.getElementById('quizArea').style.display='block';
+  document.getElementById('sectionTabs').style.display='flex';
+  document.getElementById('resultsScreen').classList.remove('show');
+  const key=safeKey(currentUser);
+  await dbUpdate(`roster/${key}`,{answeredCount:0,correctCount:0,finished:false,finishedAt:null,lastActive:ts()});
+  renderQ();
+}
+
+// ═══════════════════════════════════════════════════════════
+// INSTRUCTOR DASHBOARD — uses Firebase real-time listeners
+// ═══════════════════════════════════════════════════════════
+function showInstructor(){
+  hide('loginScreen'); hide('quizView'); show('instView');
+  document.getElementById('instHeaderName').textContent=currentUser;
+  attachListeners();
+}
+
+function attachListeners(){
+  // Real-time listener on roster — fires instantly on any change
+  dbRef('roster').on('value', snap=>{
+    const rosterData=snap.val()||{};
+    const students=Object.values(rosterData);
+    students.sort((a,b)=>{
+      const rank=s=>s.finished?2:s.answeredCount>0?0:1;
+      if(rank(a)!==rank(b))return rank(a)-rank(b);
+      return new Date(b.lastActive)-new Date(a.lastActive);
+    });
+    document.getElementById('tTotal').textContent=students.length;
+    document.getElementById('tInProg').textContent=students.filter(s=>s.answeredCount>0&&!s.finished).length;
+    document.getElementById('tDone').textContent=students.filter(s=>s.finished).length;
+    renderStudents(students);
+    document.getElementById('lastUpd').textContent='Updated just now';
+    document.getElementById('connBadge').className='conn-badge conn-ok';
+    document.getElementById('connBadge').textContent='● Live';
+  }, err=>{
+    document.getElementById('connBadge').className='conn-badge conn-err';
+    document.getElementById('connBadge').textContent='⚠ Disconnected';
+    console.error('Firebase listener error',err);
+  });
+
+  // Real-time listener on feed
+  dbRef('feed').orderByChild('time').on('value', snap=>{
+    const feedData=snap.val()||{};
+    // Convert object to array and sort newest first
+    const events=Object.values(feedData).sort((a,b)=>new Date(b.time)-new Date(a.time));
+    renderFeed(events);
+  });
+}
+
+function loadInstData(){
+  // Manual trigger — Firebase listeners already handle live updates
+  // Just force a reconnect pulse
+  document.getElementById('lastUpd').textContent='Refreshing...';
+  dbRef('roster').once('value', snap=>{
+    const students=Object.values(snap.val()||{});
+    renderStudents(students);
+    document.getElementById('lastUpd').textContent='Updated just now';
+  });
+}
+
+function renderStudents(students){
+  const el=document.getElementById('studentList');
+  if(!students.length){
+    el.innerHTML='<div class="empty-state">No students have joined yet. They will appear here the moment they sign in as Student.</div>';
+    return;
+  }
+  el.innerHTML=students.map(s=>{
+    const pct=Math.round((s.answeredCount/TQ)*100);
+    const acc=s.answeredCount>0?Math.round((s.correctCount/s.answeredCount)*100):null;
+    const initials=s.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    let dotCls,badgeCls,badgeText,barColor;
+    if(s.finished){
+      dotCls='sdot-done';badgeCls='badge-done';barColor='var(--cl)';
+      badgeText=`${s.correctCount}/${TQ} · ${Math.round((s.correctCount/TQ)*100)}%`;
+    }else if(s.answeredCount>0){
+      dotCls='sdot-prog';badgeCls='badge-inprog';barColor='var(--accent)';
+      badgeText=`On Q${s.answeredCount+1} of ${TQ}`;
+    }else{
+      dotCls='sdot-wait';badgeCls='badge-wait';barColor='var(--muted)';
+      badgeText='Not started';
+    }
+    return`<div class="student-row">
+      <div class="student-avatar">${esc(initials)}</div>
+      <div class="student-info">
+        <div class="student-name"><span class="sdot ${dotCls}"></span>${esc(s.name)}</div>
+        <div class="student-meta">Joined ${fmtTime(s.joinedAt)}${acc!==null?` · ${acc}% accuracy`:''}</div>
+      </div>
+      <div class="student-progress-wrap">
+        <div class="student-prog-bar"><div class="student-prog-fill" style="width:${pct}%;background:${barColor}"></div></div>
+        <div class="student-prog-label"><span>${pct}% complete</span><span>${s.answeredCount} / ${TQ} answered</span></div>
+      </div>
+      <div class="student-score-badge ${badgeCls}">${badgeText}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderFeed(events){
+  const el=document.getElementById('actFeed');
+  if(!events.length){el.innerHTML='<div class="empty-state">No activity yet.</div>';return;}
+  el.innerHTML=events.slice(0,40).map(e=>{
+    let badge='',msg='';
+    if(e.type==='joined'){badge=`<span class="feed-badge fb-join">Joined</span>`;msg=`<strong>${esc(e.name)}</strong> signed up for the quiz`;}
+    else if(e.type==='finished'){badge=`<span class="feed-badge fb-fin">Finished</span>`;msg=`<strong>${esc(e.name)}</strong> completed the quiz — scored ${e.score}`;}
+    return`<div class="feed-item"><span class="feed-time">${fmtTime(e.time)}</span><span class="feed-msg">${msg}</span>${badge}</div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function show(id){document.getElementById(id).classList.remove('hidden')}
+function hide(id){document.getElementById(id).classList.add('hidden')}
+function ts(){return new Date().toISOString()}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmtTime(iso){
+  if(!iso)return'—';
+  const d=new Date(iso),diff=Math.floor((Date.now()-d)/1000);
+  if(diff<60)return'just now';
+  if(diff<3600)return`${Math.floor(diff/60)}m ago`;
+  if(diff<86400)return`${Math.floor(diff/3600)}h ago`;
+  return d.toLocaleDateString();
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+loadConfig();
+if(CFG&&CFG.apiKey&&CFG.databaseURL&&CFG.instPassword){
+  if(initFirebase(CFG)){
+    hide('setupScreen'); show('loginScreen');
+  }
+}
+
+document.getElementById('loginName').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('instPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('setupPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doSetup();});
+document.getElementById('setupDbUrl').addEventListener('keydown',e=>{if(e.key==='Enter')doSetup();});
+</script>
+</body>
+</html>
